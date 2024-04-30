@@ -1,0 +1,29 @@
+[project]
+name = "lab-2"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "BubbleFish", email = "daforsastudia@gmail.com" }
+]
+dependencies = [
+    "Django>=5.0.4",
+    "djangorestframework>=3.15.1",
+    "bcrypt>=4.1.2",
+    "django-cors-headers>=4.3.1",
+]
+readme = "README.md"
+requires-python = ">= 3.11"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lab_2"]
