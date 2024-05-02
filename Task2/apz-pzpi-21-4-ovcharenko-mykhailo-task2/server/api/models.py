@@ -13,6 +13,7 @@ TIME_CHOICES = (
     (3, "dinner"),
 )
 
+
 class Model:
     objects = models.Manager()
 
@@ -29,8 +30,8 @@ class User(models.Model, Model):
     password = models.CharField(max_length=60)
     first_name = models.CharField(max_length=32)
     last_name = models.CharField(max_length=32)
-    weight = models.FloatField(null=True,blank=True)
-    body_fat = models.FloatField(null=True,blank=True)
+    weight = models.FloatField(null=True, blank=True)
+    body_fat = models.FloatField(null=True, blank=True)
     role = models.SmallIntegerField(default=0)  # type: ignore
     date_of_birth = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -48,7 +49,9 @@ class Profile(models.Model, Model):
     profile_id = models.BigAutoField(primary_key=True)
     preferences = models.JSONField(default=dict)
     fk_diet = models.ForeignKey("Diet", on_delete=models.CASCADE, null=True, blank=True)
-    fk_nutrition = models.ForeignKey("Nutrition", on_delete=models.SET_NULL, null=True, blank=True)
+    fk_nutrition = models.ForeignKey(
+        "Nutrition", on_delete=models.SET_NULL, null=True, blank=True
+    )
     fk_user = models.ForeignKey("User", on_delete=models.CASCADE)
 
     class Meta:

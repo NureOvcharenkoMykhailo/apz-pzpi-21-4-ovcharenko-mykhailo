@@ -72,7 +72,9 @@ class ValidValue:
     @property
     def variables(self):
         return {
-            k: v for k, v in self.__dict__.items() if k not in ["value", "is_optional", "keys"]
+            k: v
+            for k, v in self.__dict__.items()
+            if k not in ["value", "is_optional", "keys"]
         }
 
     def validate(self, value: str) -> bool:
