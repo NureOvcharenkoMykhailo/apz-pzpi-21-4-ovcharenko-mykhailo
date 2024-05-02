@@ -47,8 +47,8 @@ class User(models.Model, Model):
 class Profile(models.Model, Model):
     profile_id = models.BigAutoField(primary_key=True)
     preferences = models.JSONField(default=dict)
-    fk_diet = models.ForeignKey("Diet", on_delete=models.CASCADE)
-    fk_nutrition = models.ForeignKey("Nutrition", on_delete=models.SET_NULL, null=True)
+    fk_diet = models.ForeignKey("Diet", on_delete=models.CASCADE, null=True, blank=True)
+    fk_nutrition = models.ForeignKey("Nutrition", on_delete=models.SET_NULL, null=True, blank=True)
     fk_user = models.ForeignKey("User", on_delete=models.CASCADE)
 
     class Meta:
@@ -59,6 +59,7 @@ class Diet(models.Model, Model):
     diet_id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=32)
     description = models.TextField(default="", blank=True)
+    photo_url = models.TextField()
 
     class Meta:
         db_table = "Diet"
@@ -88,6 +89,7 @@ class Food(models.Model, Model):
     food_id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=32)
     description = models.TextField()
+    photo_url = models.TextField()
     carbs = models.FloatField()
     protein = models.FloatField()
     fat = models.FloatField()
