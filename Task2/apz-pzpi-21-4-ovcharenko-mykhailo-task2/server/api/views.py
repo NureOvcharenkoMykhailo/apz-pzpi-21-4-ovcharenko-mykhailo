@@ -1,9 +1,9 @@
 from typing import Union
 
-from django.core.handlers.wsgi import WSGIRequest
-from django.http.response import JsonResponse
+from rest_framework.serializers import ModelSerializer
 
-from .serializers import UserSerializer
+from .models import Food, Nutrition, Profile
+from .serializers import FoodSerializer, ProfileSerializer, UserSerializer
 from .utils import *
 
 
@@ -14,6 +14,23 @@ def get_user(user_id: str, lang) -> tuple[int, Union[dict, User]]:
         return 404, {"error": lang.translate("user.not_found", user_id)}
 
     return 200, query_user
+
+
+def get_all(
+    query_id: str, results: list, serializer: type[ModelSerializer], lang: Lang
+):
+    parts = query_id.split(":")
+    if len(parts) != 2 and [True for part in parts if not part.isnumeric()]:
+        return 409, {
+            "error": "Invalid format, must be: `[page]:[size]`",
+        }
+    page, size = int(parts[0]), int(parts[1])
+    return 200, {
+        "overflow": max(0, len(results) - (page * size) - size),
+        "results": [
+            serializer(lang, food).data for food in results[page : page + size]
+        ],
+    }
 
 
 class AccountView(View):
@@ -63,12 +80,15 @@ class AccountView(View):
         cast(User, query).delete()
         return 200, {}
 
-    def get_query(self, user: User, query_id: str):
+    def get_query(self, query_id: str):
         code, query = get_user(query_id, self.lang)
         if code != 200:
             return code, query
 
         return 200, UserSerializer(self.lang, query).data
+
+    def get_all(self, query_id: str):
+        return get_all(query_id, User.objects.all(), UserSerializer, self.lang)
 
     class Edit(Args):
         user_id: str = ValidString(16)  # type: ignore
@@ -101,4 +121,129 @@ class AccountView(View):
             query_user.role = post.role  # type: ignore
         query_user.save()
 
+        return 200, UserSerializer(self.lang, query_user).data
+
+    def get_profile(self, query_id: str):
+        code, query = get_user(query_id, self.lang)
+        if code != 200:
+            return code, query
+
+        profile = Profile.secure_get(fk_user=query)
+        if profile is None:
+            profile = Profile(fk_user=query)
+            profile.save()
+
+        return 200, ProfileSerializer(self.lang, profile).data
+
+
+class FoodView(View):
+    class Create(Args):
+        name: str = ValidString(32)  # type: ignore
+        description: str = ValidString()  # type: ignore
+        photo_url: str = ValidUrl()  # type: ignore
+        carbs: str = ValidFloat()  # type: ignore
+        protein: str = ValidFloat()  # type: ignore
+        fat: str = ValidFloat()  # type: ignore
+        calories: str = ValidFloat()  # type: ignore
+        vitamins: str = ValidJson({i: ValidFloat() for i in VITAMINS})  # type: ignore
+        minerals: str = ValidJson({i: ValidFloat() for i in MINERALS})  # type: ignore
+        amino_acids: str = ValidJson({i: ValidFloat() for i in AMINO_ACIDS})  # type: ignore
+
+    def post_create(self, post: Create, user: User):
+        if user.role == 0:
+            return 403, {"error": self.lang.translate("user.no_permission")}
+
+        food = Food(**post.as_dict(filters=["vitamins", "minerals", "amino_acids"]))
+        nutrition = Nutrition(
+            vitamins=json.dumps(post.vitamins),
+            minerals=json.dumps(post.minerals),
+            amino_acids=json.dumps(post.amino_acids),
+        )
+        nutrition.save()
+
+        food.fk_nutrition = nutrition  # type: ignore
+        food.save()
+        return 200, FoodSerializer(self.lang, food).data
+
+    def get_query(self, query_id: int):
+        food = Food.secure_get(food_id=query_id)
+
+        if food is None:
+            return 404, {"error": self.lang.translate("generic.not_found", query_id)}
+
+        return 200, FoodSerializer(self.lang, food).data
+
+    def get_all(self, query_id: str):
+        return get_all(query_id, Food.objects.all(), FoodSerializer, self.lang)
+
+    def delete_delete(self, user: User, query_id: int):
+        if user.role == 0:
+            return 403, {"error": self.lang.translate("user.no_permission")}
+
+        food: Food = Food.secure_get(food_id=query_id)
+
+        if food is None:
+            return 404, {"error": self.lang.translate("generic.not_found", query_id)}
+
+        food.fk_nutrition.delete()  # type: ignore
+        food.delete()
+
         return 200, {}
+
+    class Edit(Args):
+        food_id: str = ValidInteger()  # type: ignore
+        name: str = ValidString(32, is_optional=True)  # type: ignore
+        description: str = ValidString(is_optional=True)  # type: ignore
+        photo_url: str = ValidUrl(is_optional=True)  # type: ignore
+        carbs: str = ValidFloat(is_optional=True)  # type: ignore
+        protein: str = ValidFloat(is_optional=True)  # type: ignore
+        fat: str = ValidFloat(is_optional=True)  # type: ignore
+        calories: str = ValidFloat(is_optional=True)  # type: ignore
+        vitamins: str = ValidJson({i: ValidFloat() for i in VITAMINS}, is_optional=True)  # type: ignore
+        minerals: str = ValidJson({i: ValidFloat() for i in MINERALS}, is_optional=True)  # type: ignore
+        amino_acids: str = ValidJson({i: ValidFloat() for i in AMINO_ACIDS}, is_optional=True)  # type: ignore
+
+    def post_edit(self, post: Edit, user: User):
+        if user.role == 0:
+            return 403, {"error": self.lang.translate("user.no_permission")}
+
+        food: Food = Food.secure_get(food_id=post.food_id)
+        if food is None:
+            return 404, {
+                "error": self.lang.translate("generic.not_found", post.food_id)
+            }
+
+        if post.name:
+            food.name = post.name  # type: ignore
+        if post.description:
+            food.description = post.description  # type: ignore
+        if post.photo_url:
+            food.photo_url = post.photo_url  # type: ignore
+        if post.carbs:
+            food.carbs = post.carbs  # type: ignore
+        if post.protein:
+            food.protein = post.protein  # type: ignore
+        if post.fat:
+            food.fat = post.fat  # type: ignore
+        if post.calories:
+            food.calories = post.calories  # type: ignore
+        if post.vitamins:
+            food.fk_nutrition.vitamins = json.dumps(post.vitamins)  # type: ignore
+        if post.minerals:
+            food.fk_nutrition.minerals = json.dumps(post.minerals)  # type: ignore
+        if post.amino_acids:
+            food.fk_nutrition.amino_acids = json.dumps(post.amino_acids)  # type: ignore
+
+        return 200, FoodSerializer(self.lang, food).data
+
+
+class SubmissionView(View):
+    pass
+
+
+class DietView(View):
+    pass
+
+
+class MealPlanView(View):
+    pass

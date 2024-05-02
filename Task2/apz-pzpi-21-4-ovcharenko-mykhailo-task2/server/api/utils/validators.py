@@ -1,9 +1,61 @@
 import datetime
 import math
-from typing import Callable
+from typing import Callable, cast
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
+from django.http.response import json
+
+VITAMINS = [
+    "vitamin_a",
+    "vitamin_b6",
+    "vitamin_b12",
+    "vitamin_c",
+    "vitamin_d",
+    "vitamin_e",
+    "vitamin_k1",
+    "betaine",
+    "choline",
+    "folate",
+    "thiamin",
+    "riboflavin",
+    "pantothenic_acid",
+    "niacin",
+]
+
+MINERALS = [
+    "calcium",
+    "copper",
+    "fluoride",
+    "iron",
+    "magnesium",
+    "manganese",
+    "phosphorus",
+    "potassium",
+    "selenium",
+    "sodium",
+    "zinc",
+]
+
+AMINO_ACIDS = [
+    "alanine",
+    "arginine",
+    "aspartic_acid",
+    "cystine",
+    "glutamic_acid",
+    "glycine",
+    "histidine",
+    "isoleucine",
+    "leucine",
+    "lysine",
+    "methionine",
+    "phenylalanine",
+    "proline",
+    "serine",
+    "threonine",
+    "tyrosine",
+    "valine",
+]
 
 
 class ValidValue:
@@ -11,10 +63,16 @@ class ValidValue:
         self.value = None
         self.is_optional = is_optional
 
+    def __str__(self) -> str:
+        return f"<{self.__class__.__name__[5:].lower()}>"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
     @property
     def variables(self):
         return {
-            k: v for k, v in self.__dict__.items() if k not in ["value", "is_optional"]
+            k: v for k, v in self.__dict__.items() if k not in ["value", "is_optional", "keys"]
         }
 
     def validate(self, value: str) -> bool:
@@ -80,7 +138,7 @@ class ValidInteger(ValidValue):
 class ValidFloat(ValidValue):
     def validate(self, value: str) -> bool:
         try:
-            self.value = float(value)
+            self.value = float(value or "0.0")
         except ValueError:
             return False
         return True
@@ -146,4 +204,27 @@ class ValidDate(ValidValue):
             return False
 
         self.value = value
-        return ValidInteger().validate(parts[0]) and ValidInteger().validate(parts[1]) and ValidInteger().validate(parts[2])
+        return (
+            ValidInteger().validate(parts[0])
+            and ValidInteger().validate(parts[1])
+            and ValidInteger().validate(parts[2])
+        )
+
+
+class ValidJson(ValidValue):
+    def __init__(self, schema: dict[str, ValidValue], is_optional: bool = False):
+        self.schema = schema
+        self.keys = list(schema.keys())
+        super().__init__(is_optional)
+
+    def validate(self, value: str) -> bool:
+        try:
+            self.value = json.loads(value)
+            for key, value in cast(dict, self.value).items():
+                if key not in self.keys:
+                    return False
+                if not self.schema[key].validate(value):
+                    return False
+        except:
+            return False
+        return True
