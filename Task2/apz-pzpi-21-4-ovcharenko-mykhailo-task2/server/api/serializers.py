@@ -1,7 +1,7 @@
 from django.http.response import json
 from rest_framework.serializers import ModelSerializer, SerializerMethodField
 
-from .models import Food, Nutrition, Profile, User
+from .models import Diet, Food, MealPlan, Nutrition, Profile, Submission, User
 from .utils.lang import Lang
 
 
@@ -115,3 +115,67 @@ class FoodSerializer(ModelSerializer):
 
     def get_nutrition(self, obj: Profile):
         return NutritionSerializer(self._lang, obj.fk_nutrition).data
+
+
+class SubmissionSerializer(ModelSerializer):
+    reviewer = SerializerMethodField()
+    user = SerializerMethodField()
+
+    def __init__(self, lang: Lang, data):
+        self._lang = lang
+        super().__init__(data)
+
+    class Meta:
+        model = Submission
+        fields = [
+            "submission_id",
+            "note",
+            "reviewer",
+            "user",
+            "is_accepted",
+        ]
+
+    def get_reviewer(self, obj: Submission):
+        if obj.reviewer is None:
+            return None
+        user = User.secure_get(user_id=obj.reviewer)
+        if user is None:
+            return None
+        return UserSerializer(self._lang, user).data
+
+    def get_user(self, obj: Submission):
+        return UserSerializer(self._lang, obj.fk_user).data
+
+
+class DietSerializer(ModelSerializer):
+    def __init__(self, lang: Lang, data):
+        self._lang = lang
+        super().__init__(data)
+
+    class Meta:
+        model = Diet
+        fields = [
+            "diet_id",
+            "name",
+            "description",
+            "photo_url",
+        ]
+
+
+class MealPlanSerializer(ModelSerializer):
+    diet = SerializerMethodField()
+
+    def __init__(self, lang: Lang, data):
+        self._lang = lang
+        super().__init__(data)
+
+    class Meta:
+        model = MealPlan
+        fields = [
+            "meal_plan_id",
+            "time",
+            "diet",
+        ]
+
+    def get_diet(self, obj: MealPlan):
+        return DietSerializer(self._lang, obj.fk_diet).data

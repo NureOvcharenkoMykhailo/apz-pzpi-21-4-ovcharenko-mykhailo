@@ -1,5 +1,7 @@
 from typing import Callable
 
+from django.http import HttpResponse
+
 from api.models import User
 from django.urls import path
 from rest_framework.decorators import api_view
@@ -136,6 +138,8 @@ class View(GenClass):
                 code, response = fn(view_args, *args, **kwargs)
         else:
             code, response = fn(*args, **kwargs)
+        if code == 201:
+            return HttpResponse(response, headers={"Access-Control-Allow-Origin": "*"})  # type: ignore
         return Response(
             response, status=code, headers={"Access-Control-Allow-Origin": "*"}
         )

@@ -10,6 +10,7 @@ dependencies = [
     "djangorestframework>=3.15.1",
     "bcrypt>=4.1.2",
     "django-cors-headers>=4.3.1",
+    "django-import-export>=4.0.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.11"

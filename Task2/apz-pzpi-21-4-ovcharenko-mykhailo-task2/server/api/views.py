@@ -1,9 +1,12 @@
 from typing import Union
 
+import tablib
 from rest_framework.serializers import ModelSerializer
 
-from .models import Food, Nutrition, Profile
-from .serializers import FoodSerializer, ProfileSerializer, UserSerializer
+from .admin import DietResource, FoodResource, MealPlanResource, NutritionResource, ProfileResource, SubmissionResource, UserResource
+from .models import Diet, Food, MealPlan, Nutrition, Profile, Submission
+from .serializers import (DietSerializer, FoodSerializer, MealPlanSerializer, ProfileSerializer,
+                          SubmissionSerializer, UserSerializer)
 from .utils import *
 
 
@@ -238,12 +241,238 @@ class FoodView(View):
 
 
 class SubmissionView(View):
-    pass
+    class Create(Args):
+        note: str = ValidString()  # type: ignore
+
+    def post_create(self, post: Create, user: User):
+        submission = Submission(note=post.note, fk_user=user)
+        submission.save()
+
+        return 200, SubmissionSerializer(self.lang, submission).data
+
+    def get_query(self, query_id: str):
+        submission = Submission.secure_get(submission_id=query_id)
+
+        if submission is None:
+            return 404, {"error": self.lang.translate("generic.not_found", query_id)}
+
+        return 200, SubmissionSerializer(self.lang, submission).data
+
+    def get_all(self, query_id: str):
+        return get_all(
+            query_id, Submission.objects.all(), SubmissionSerializer, self.lang
+        )
+
+    def delete_delete(self, query_id: str, user: User):
+        submission: Submission = Submission.secure_get(submission_id=query_id)
+        if user.role == 0 and submission.fk_user.user_id != user.user_id:  # type: ignore
+            return 403, {"error": self.lang.translate("user.no_permission")}
+
+        if submission is None:
+            return 404, {"error": self.lang.translate("generic.not_found", query_id)}
+
+        submission.delete()
+
+        return 200, {}
+
+    class Edit(Args):
+        submission_id: str = ValidInteger()  # type: ignore
+        note: str = ValidString(is_optional=True)  # type: ignore
+        is_accepted: str = ValidBoolean(is_optional=True)  # type: ignore
+
+    def post_edit(self, post: Edit, user: User):
+        submission: Submission = Submission.secure_get(submission_id=post.submission_id)
+        if user.role == 0 and submission.fk_user.user_id != user.user_id:  # type: ignore
+            return 403, {"error": self.lang.translate("user.no_permission")}
+
+        if submission is None:
+            return 404, {
+                "error": self.lang.translate("generic.not_found", post.submission_id)
+            }
+
+        if post.note:
+            submission.note = post.note  # type: ignore
+        if post.is_accepted:
+            if post.is_accepted:
+                submission.reviewer = user.user_id
+            if not post.is_accepted:
+                submission.reviewer = None  # type: ignore
+            submission.is_accepted = post.is_accepted  # type: ignore
+        submission.save()
+
+        return 200, SubmissionSerializer(self.lang, submission).data
 
 
 class DietView(View):
-    pass
+    class Create(Args):
+        name: str = ValidString(32)  # type: ignore
+        description: str = ValidString(is_optional=True)  # type: ignore
+        photo_url: str = ValidUrl()  # type: ignore
+
+    def post_create(self, post: Create, user: User):
+        if user.role == 0:  # type: ignore
+            return 403, {"error": self.lang.translate("user.no_permission")}
+
+        diet = Diet(**post.as_dict())
+        diet.save()
+
+        return 200, DietSerializer(self.lang, diet).data
+
+    def get_query(self, query_id: str):
+        diet = Diet.secure_get(diet_id=query_id)
+
+        if diet is None:
+            return 404, {"error": self.lang.translate("generic.not_found", query_id)}
+
+        return 200, DietSerializer(self.lang, diet).data
+
+    def get_all(self, query_id: str):
+        return get_all(query_id, Diet.objects.all(), DietSerializer, self.lang)
+
+    class Edit(Args):
+        diet_id: str = ValidInteger()  # type: ignore
+        name: str = ValidString(32, is_optional=True)  # type: ignore
+        description: str = ValidString(is_optional=True)  # type: ignore
+        photo_url: str = ValidUrl(is_optional=True)  # type: ignore
+
+    def post_edit(self, post: Edit, user: User):
+        if user.role == 0:  # type: ignore
+            return 403, {"error": self.lang.translate("user.no_permission")}
+
+        diet: Diet = Diet.secure_get(diet_id=post.diet_id)
+
+        if diet is None:
+            return 404, {"error": self.lang.translate("generic.not_found", post.diet_id)}
+
+        if post.name:
+            diet.name = post.name  # type: ignore
+        if post.description:
+            diet.description = post.description  # type: ignore
+        if post.photo_url:
+            diet.photo_url = post.photo_url  # type: ignore
+
+        diet.save()
+
+        return 200, DietSerializer(self.lang, diet).data
+
+    def delete_delete(self, user: User, query_id: str):
+        if user.role == 0:  # type: ignore
+            return 403, {"error": self.lang.translate("user.no_permission")}
+
+        diet: Diet = Diet.secure_get(diet_id=query_id)
+
+        if diet is None:
+            return 404, {"error": self.lang.translate("generic.not_found", query_id)}
+
+        diet.delete()
+
+        return 200, {}
 
 
 class MealPlanView(View):
-    pass
+    class Create(Args):
+        time: str = ValidMealTime()  # type: ignore
+        diet_id: str = ValidInteger()  # type: ignore
+
+    def post_create(self, post: Create, user: User):
+        if user.role == 0:  # type: ignore
+            return 403, {"error": self.lang.translate("user.no_permission")}
+
+        diet = Diet.secure_get(diet_id=post.diet_id)
+
+        if diet is None:
+            return 404, {"error": self.lang.translate("generic.not_found", post.diet_id)}
+
+        meal_plan = MealPlan(time=post.time, fk_diet=diet)
+        meal_plan.save()
+
+        return 200, MealPlanSerializer(self.lang, meal_plan).data
+
+
+    def get_query(self, query_id: str):
+        meal_plan = MealPlan.secure_get(meal_plan_id=query_id)
+
+        if meal_plan is None:
+            return 404, {"error": self.lang.translate("generic.not_found", query_id)}
+
+        return 200, MealPlanSerializer(self.lang, meal_plan).data
+
+    def get_all(self, query_id: str):
+        return get_all(query_id, MealPlan.objects.all(), MealPlanSerializer, self.lang)
+
+    def delete_delete(self, query_id: str):
+        meal_plan = MealPlan.secure_get(meal_plan_id=query_id)
+
+        if meal_plan is None:
+            return 404, {"error": self.lang.translate("generic.not_found", query_id)}
+
+        meal_plan.delete()
+
+        return 200, {}
+
+
+class SystemView(View):
+    def get_backup(self, user: User, query_id: str):
+        if user.role != 2:
+            return 403, {"error": self.lang.translate("user.no_permission")}
+
+        match query_id:
+            case "users":
+                return 201, UserResource().export(format="csv").csv  #type: ignore
+            case "profiles":
+                return 201, ProfileResource().export(format="csv").csv  #type: ignore
+            case "diets":
+                return 201, DietResource().export(format="csv").csv  #type: ignore
+            case "meal_plans":
+                return 201, MealPlanResource().export(format="csv").csv  #type: ignore
+            case "submissions":
+                return 201, SubmissionResource().export(format="csv").csv  #type: ignore
+            case "foods":
+                return 201, FoodResource().export(format="csv").csv  #type: ignore
+            case "nutritions":
+                return 201, NutritionResource().export(format="csv").csv  #type: ignore
+            case _:
+                return 201, ""
+
+    class Rollback(Args):
+        resource: str = ValidString() # type: ignore
+        data: str = ValidString() # type: ignore
+
+    def post_rollback(self, post: Rollback, user: User):
+        if user.role != 2:
+            return 403, {"error": self.lang.translate("user.no_permission")}
+
+        data = tablib.Dataset()
+        data.csv = post.data  # type: ignore
+
+        match post.resource:
+            case "users":
+                return 200, {
+                    "has_errors": UserResource().import_data(data).has_errors() #type: ignore
+                }
+            case "profiles":
+                return 200, {
+                    "has_errors": ProfileResource().import_data(data).has_errors() #type: ignore
+                }
+            case "diets":
+                return 200, {
+                    "has_errors": DietResource().import_data(data).has_errors() #type: ignore
+                }
+            case "meal_plans":
+                return 200, {
+                    "has_errors": MealPlanResource().import_data(data).has_errors() #type: ignore
+                }
+            case "submissions":
+                return 200, {
+                    "has_errors": SubmissionResource().import_data(data).has_errors() #type: ignore
+                }
+            case "foods":
+                return 200, {
+                    "has_errors": FoodResource().import_data(data).has_errors() #type: ignore
+                }
+            case "nutritions":
+                return 200, {
+                    "has_errors": NutritionResource().import_data(data).has_errors() #type: ignore
+                }
+            case _:
+                return 201, ""

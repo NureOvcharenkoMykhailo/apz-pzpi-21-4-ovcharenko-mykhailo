@@ -214,14 +214,20 @@ class ValidDate(ValidValue):
 
 
 class ValidJson(ValidValue):
-    def __init__(self, schema: dict[str, ValidValue], is_optional: bool = False):
+    def __init__(self, schema: dict[str, ValidValue], is_optional = False, arbitrary = False):
         self.schema = schema
         self.keys = list(schema.keys())
+        self.arbitrary = arbitrary
         super().__init__(is_optional)
 
     def validate(self, value: str) -> bool:
         try:
-            self.value = json.loads(value)
+            if value is str:
+                self.value = json.loads(value)
+            else:
+                self.value = value
+            if self.arbitrary:
+                return True
             for key, value in cast(dict, self.value).items():
                 if key not in self.keys:
                     return False
@@ -230,3 +236,23 @@ class ValidJson(ValidValue):
         except:
             return False
         return True
+
+
+class ValidBoolean(ValidValue):
+    def validate(self, value: str) -> bool:
+        if type(value) is bool:
+            self.value = value
+            return True
+        if value.lower() == "true":
+            self.value = True
+            return True
+        if value.lower() == "false":
+            self.value = False
+            return True
+        return False
+
+
+class ValidMealTime(ValidValue):
+    def validate(self, value: str) -> bool:
+        self.value = value or 0
+        return self.value in [0, 1, 2, 3]
