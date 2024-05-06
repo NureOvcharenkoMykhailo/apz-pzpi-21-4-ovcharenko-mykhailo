@@ -1,3 +1,5 @@
+import statistics
+
 from django.http.response import json
 from rest_framework.serializers import ModelSerializer, SerializerMethodField
 
@@ -148,6 +150,8 @@ class SubmissionSerializer(ModelSerializer):
 
 
 class DietSerializer(ModelSerializer):
+    average_intake = SerializerMethodField()
+
     def __init__(self, lang: Lang, data):
         self._lang = lang
         super().__init__(data)
@@ -159,7 +163,43 @@ class DietSerializer(ModelSerializer):
             "name",
             "description",
             "photo_url",
+            "average_intake",
         ]
+
+    def get_average_intake(self, obj: Diet):
+        def get(property: str):
+            return statistics.mean(
+                [
+                    statistics.mean([getattr(food, property) for food in plan.get_foods()] or [0.0])  # type: ignore
+                    for plan in meal_plans
+                ]
+                or [0.0]
+            )
+
+        def get_nutrition(property: str):
+            data: dict[str, tuple[float, int]] = {}
+            for plan in meal_plans:
+                for food in plan.get_foods():
+                    for key, value in json.loads(getattr(food.fk_nutrition, property)).items():
+                        if data.get(key) is None:
+                            data[key] = (value, 1)
+                        else:
+                            data[key] = (data[key][0]+value, data[key][1]+1)
+            return {
+                k: v[0] / v[1]
+                for k, v in data.items()
+            }
+
+        meal_plans: list[MealPlan] = MealPlan.objects.filter(fk_diet_id=obj).all()
+        return {
+            "carbs": get("carbs"),
+            "protein": get("protein"),
+            "fat": get("fat"),
+            "calories": get("calories"),
+            "vitamins": get_nutrition("vitamins"),
+            "minerals": get_nutrition("minerals"),
+            "amino_acids": get_nutrition("amino_acids"),
+        }
 
 
 class MealPlanSerializer(ModelSerializer):
