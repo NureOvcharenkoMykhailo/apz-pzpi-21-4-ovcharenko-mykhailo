@@ -483,13 +483,3 @@ class SystemView(View):
                 }
             case _:
                 return 201, ""
-
-    def get_statistics(self):
-        return 200, {
-            "popular_diets": [
-                DietSerializer(Lang("en"), j).data
-                for j in sorted(
-                    Diet.objects.all(), key=lambda x: x.get_popularity(), reverse=True
-                )[:3]
-            ],
-        }
