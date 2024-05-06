@@ -256,3 +256,11 @@ class ValidMealTime(ValidValue):
     def validate(self, value: str) -> bool:
         self.value = value or 0
         return self.value in [0, 1, 2, 3]
+
+class ValidList(ValidValue):
+    def validate(self, value: str) -> bool:
+        try:
+            self.value = [int(i) for i in value.split(",") if i]
+        except:
+            return False
+        return True

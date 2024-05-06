@@ -3,10 +3,13 @@ from typing import Union
 import tablib
 from rest_framework.serializers import ModelSerializer
 
-from .admin import DietResource, FoodResource, MealPlanResource, NutritionResource, ProfileResource, SubmissionResource, UserResource
+from .admin import (DietResource, FoodResource, MealPlanResource,
+                    NutritionResource, ProfileResource, SubmissionResource,
+                    UserResource)
 from .models import Diet, Food, MealPlan, Nutrition, Profile, Submission
-from .serializers import (DietSerializer, FoodSerializer, MealPlanSerializer, ProfileSerializer,
-                          SubmissionSerializer, UserSerializer)
+from .serializers import (DietSerializer, FoodSerializer, MealPlanSerializer,
+                          ProfileSerializer, SubmissionSerializer,
+                          UserSerializer)
 from .utils import *
 
 
@@ -342,7 +345,9 @@ class DietView(View):
         diet: Diet = Diet.secure_get(diet_id=post.diet_id)
 
         if diet is None:
-            return 404, {"error": self.lang.translate("generic.not_found", post.diet_id)}
+            return 404, {
+                "error": self.lang.translate("generic.not_found", post.diet_id)
+            }
 
         if post.name:
             diet.name = post.name  # type: ignore
@@ -373,6 +378,7 @@ class MealPlanView(View):
     class Create(Args):
         time: str = ValidMealTime()  # type: ignore
         diet_id: str = ValidInteger()  # type: ignore
+        foods: str = ValidList()  # type: ignore
 
     def post_create(self, post: Create, user: User):
         if user.role == 0:  # type: ignore
@@ -381,13 +387,14 @@ class MealPlanView(View):
         diet = Diet.secure_get(diet_id=post.diet_id)
 
         if diet is None:
-            return 404, {"error": self.lang.translate("generic.not_found", post.diet_id)}
+            return 404, {
+                "error": self.lang.translate("generic.not_found", post.diet_id)
+            }
 
-        meal_plan = MealPlan(time=post.time, fk_diet=diet)
+        meal_plan = MealPlan(time=post.time, fk_diet=diet, foods=",".join([str(i) for i in post.foods]))
         meal_plan.save()
 
         return 200, MealPlanSerializer(self.lang, meal_plan).data
-
 
     def get_query(self, query_id: str):
         meal_plan = MealPlan.secure_get(meal_plan_id=query_id)
@@ -418,25 +425,25 @@ class SystemView(View):
 
         match query_id:
             case "users":
-                return 201, UserResource().export(format="csv").csv  #type: ignore
+                return 201, UserResource().export(format="csv").csv  # type: ignore
             case "profiles":
-                return 201, ProfileResource().export(format="csv").csv  #type: ignore
+                return 201, ProfileResource().export(format="csv").csv  # type: ignore
             case "diets":
-                return 201, DietResource().export(format="csv").csv  #type: ignore
+                return 201, DietResource().export(format="csv").csv  # type: ignore
             case "meal_plans":
-                return 201, MealPlanResource().export(format="csv").csv  #type: ignore
+                return 201, MealPlanResource().export(format="csv").csv  # type: ignore
             case "submissions":
-                return 201, SubmissionResource().export(format="csv").csv  #type: ignore
+                return 201, SubmissionResource().export(format="csv").csv  # type: ignore
             case "foods":
-                return 201, FoodResource().export(format="csv").csv  #type: ignore
+                return 201, FoodResource().export(format="csv").csv  # type: ignore
             case "nutritions":
-                return 201, NutritionResource().export(format="csv").csv  #type: ignore
+                return 201, NutritionResource().export(format="csv").csv  # type: ignore
             case _:
                 return 201, ""
 
     class Rollback(Args):
-        resource: str = ValidString() # type: ignore
-        data: str = ValidString() # type: ignore
+        resource: str = ValidString()  # type: ignore
+        data: str = ValidString()  # type: ignore
 
     def post_rollback(self, post: Rollback, user: User):
         if user.role != 2:
@@ -448,31 +455,41 @@ class SystemView(View):
         match post.resource:
             case "users":
                 return 200, {
-                    "has_errors": UserResource().import_data(data).has_errors() #type: ignore
+                    "has_errors": UserResource().import_data(data).has_errors()  # type: ignore
                 }
             case "profiles":
                 return 200, {
-                    "has_errors": ProfileResource().import_data(data).has_errors() #type: ignore
+                    "has_errors": ProfileResource().import_data(data).has_errors()  # type: ignore
                 }
             case "diets":
                 return 200, {
-                    "has_errors": DietResource().import_data(data).has_errors() #type: ignore
+                    "has_errors": DietResource().import_data(data).has_errors()  # type: ignore
                 }
             case "meal_plans":
                 return 200, {
-                    "has_errors": MealPlanResource().import_data(data).has_errors() #type: ignore
+                    "has_errors": MealPlanResource().import_data(data).has_errors()  # type: ignore
                 }
             case "submissions":
                 return 200, {
-                    "has_errors": SubmissionResource().import_data(data).has_errors() #type: ignore
+                    "has_errors": SubmissionResource().import_data(data).has_errors()  # type: ignore
                 }
             case "foods":
                 return 200, {
-                    "has_errors": FoodResource().import_data(data).has_errors() #type: ignore
+                    "has_errors": FoodResource().import_data(data).has_errors()  # type: ignore
                 }
             case "nutritions":
                 return 200, {
-                    "has_errors": NutritionResource().import_data(data).has_errors() #type: ignore
+                    "has_errors": NutritionResource().import_data(data).has_errors()  # type: ignore
                 }
             case _:
                 return 201, ""
+
+    def get_statistics(self):
+        return 200, {
+            "popular_diets": [
+                DietSerializer(Lang("en"), j).data
+                for j in sorted(
+                    Diet.objects.all(), key=lambda x: x.get_popularity(), reverse=True
+                )[:3]
+            ],
+        }

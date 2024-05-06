@@ -72,9 +72,14 @@ class MealPlan(models.Model, Model):
     meal_plan_id = models.BigAutoField(primary_key=True)
     time = models.SmallIntegerField(default=0, choices=TIME_CHOICES)  # type: ignore
     fk_diet = models.ForeignKey("Diet", on_delete=models.CASCADE)
+    foods = models.TextField()
 
     class Meta:
         db_table = "MealPlan"
+
+    def get_foods(self) -> list["Food"]:
+        diets = [Food.secure_get(food_id=int(i)) for i in str(self.foods).split(",") if i]
+        return [i for i in diets if i]
 
 
 class Submission(models.Model, Model):
