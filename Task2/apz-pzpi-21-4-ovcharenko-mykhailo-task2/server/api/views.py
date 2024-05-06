@@ -3,13 +3,9 @@ from typing import Union
 import tablib
 from rest_framework.serializers import ModelSerializer
 
-from .admin import (DietResource, FoodResource, MealPlanResource,
-                    NutritionResource, ProfileResource, SubmissionResource,
-                    UserResource)
+from .admin import *
 from .models import Diet, Food, MealPlan, Nutrition, Profile, Submission
-from .serializers import (DietSerializer, FoodSerializer, MealPlanSerializer,
-                          ProfileSerializer, SubmissionSerializer,
-                          UserSerializer)
+from .serializers import *
 from .utils import *
 
 
