@@ -222,7 +222,7 @@ class ValidJson(ValidValue):
 
     def validate(self, value: str) -> bool:
         try:
-            if value is str:
+            if type(value) is str:
                 self.value = json.loads(value)
             else:
                 self.value = value
@@ -233,7 +233,8 @@ class ValidJson(ValidValue):
                     return False
                 if not self.schema[key].validate(value):
                     return False
-        except:
+        except Exception as e:
+            print(e)
             return False
         return True
 
