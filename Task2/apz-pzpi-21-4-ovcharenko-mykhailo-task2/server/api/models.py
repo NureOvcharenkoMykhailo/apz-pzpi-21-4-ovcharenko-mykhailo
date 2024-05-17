@@ -32,9 +32,13 @@ class User(models.Model, Model):
     last_name = models.CharField(max_length=32)
     weight = models.FloatField(null=True, blank=True)
     body_fat = models.FloatField(null=True, blank=True)
+    blood_pressure = models.IntegerField(null=True, blank=True)
+    heart_rate = models.IntegerField(null=True, blank=True)
+    oxygen_level = models.IntegerField(null=True, blank=True)
     role = models.SmallIntegerField(default=0)  # type: ignore
     date_of_birth = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     last_seen_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -78,7 +82,9 @@ class MealPlan(models.Model, Model):
         db_table = "MealPlan"
 
     def get_foods(self) -> list["Food"]:
-        diets = [Food.secure_get(food_id=int(i)) for i in str(self.foods).split(",") if i]
+        diets = [
+            Food.secure_get(food_id=int(i)) for i in str(self.foods).split(",") if i
+        ]
         return [i for i in diets if i]
 
 

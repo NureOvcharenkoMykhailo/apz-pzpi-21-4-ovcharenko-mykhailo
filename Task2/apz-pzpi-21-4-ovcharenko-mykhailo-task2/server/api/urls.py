@@ -9,4 +9,5 @@ urlpatterns = [
     *DietView.get_url_patterns(),
     *MealPlanView.get_url_patterns(),
     *SystemView.get_url_patterns(),
+    *IotView.get_url_patterns(),
 ]

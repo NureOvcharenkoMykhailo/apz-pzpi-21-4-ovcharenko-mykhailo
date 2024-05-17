@@ -262,7 +262,7 @@ class SubmissionView(View):
             query_id, Submission.objects.all(), SubmissionSerializer, self.lang
         )
 
-    def delete_delete(self, query_id: str, user: User):
+    def delete_delete(self, user: User, query_id: str):
         submission: Submission = Submission.secure_get(submission_id=query_id)
         if user.role == 0 and submission.fk_user.user_id != user.user_id:  # type: ignore
             return 403, {"error": self.lang.translate("user.no_permission")}
@@ -387,7 +387,9 @@ class MealPlanView(View):
                 "error": self.lang.translate("generic.not_found", post.diet_id)
             }
 
-        meal_plan = MealPlan(time=post.time, fk_diet=diet, foods=",".join([str(i) for i in post.foods]))
+        meal_plan = MealPlan(
+            time=post.time, fk_diet=diet, foods=",".join([str(i) for i in post.foods])
+        )
         meal_plan.save()
 
         return 200, MealPlanSerializer(self.lang, meal_plan).data
@@ -479,3 +481,23 @@ class SystemView(View):
                 }
             case _:
                 return 201, ""
+
+
+class IotView(View):
+    class Update(Args):
+        user_id: str = ValidString(16)  # type: ignore
+        blood_pressure: int = ValidInteger()  # type: ignore
+        heart_rate: int = ValidInteger()  # type: ignore
+        oxygen_level: int = ValidInteger()  # type: ignore
+
+    def post_update(self, post: Update):
+        query_user: User = User.secure_get(user_id=post.user_id)
+        if query_user is None:
+            return 404, {"error": self.lang.translate("user.not_found", post.user_id)}
+
+        query_user.heart_rate = post.heart_rate  # type: ignore
+        query_user.oxygen_level = post.oxygen_level  # type: ignore
+        query_user.blood_pressure = post.blood_pressure  # type: ignore
+        query_user.save()
+
+        return 200, UserSerializer(self.lang, query_user).data

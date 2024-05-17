@@ -23,9 +23,13 @@ class UserSerializer(ModelSerializer):
             "last_name",
             "weight",
             "body_fat",
+            "heart_rate",
+            "blood_pressure",
+            "oxygen_level",
             "role",
             "date_of_birth",
             "created_at",
+            "updated_at",
             "last_seen_at",
         ]
 
@@ -180,15 +184,14 @@ class DietSerializer(ModelSerializer):
             data: dict[str, tuple[float, int]] = {}
             for plan in meal_plans:
                 for food in plan.get_foods():
-                    for key, value in json.loads(getattr(food.fk_nutrition, property)).items():
+                    for key, value in json.loads(
+                        getattr(food.fk_nutrition, property)
+                    ).items():
                         if data.get(key) is None:
                             data[key] = (value, 1)
                         else:
-                            data[key] = (data[key][0]+value, data[key][1]+1)
-            return {
-                k: v[0] / v[1]
-                for k, v in data.items()
-            }
+                            data[key] = (data[key][0] + value, data[key][1] + 1)
+            return {k: v[0] / v[1] for k, v in data.items()}
 
         meal_plans: list[MealPlan] = MealPlan.objects.filter(fk_diet_id=obj).all()
         return {
