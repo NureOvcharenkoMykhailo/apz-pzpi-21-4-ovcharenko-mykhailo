@@ -1,0 +1,7 @@
+{
+  "protocol": "http",
+  "ip": "127.0.0.1",
+  "port": 8000,
+  "user_id": "test",
+  "locale": "ua"
+}
