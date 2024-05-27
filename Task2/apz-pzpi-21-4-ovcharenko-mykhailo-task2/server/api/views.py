@@ -51,7 +51,7 @@ class AccountView(View):
             }
 
         user = User(**post.as_dict(filters=["password", "date_of_birth"]))
-        user.date_of_birth = datetime.datetime(*[int(i) for i in reversed(post.date_of_birth.split("/"))])  # type: ignore
+        user.date_of_birth = datetime.datetime(*[int(i) for i in post.date_of_birth.split("-")])  # type: ignore
         user.password = str(Password.encrypt(post.password), encoding="utf-8")  # type: ignore
         user.save()
 

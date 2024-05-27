@@ -201,7 +201,7 @@ class ValidTime(ValidValue):
 
 class ValidDate(ValidValue):
     def validate(self, value: str) -> bool:
-        parts = value.split("/")
+        parts = value.split("-")
         if len(parts) != 3:
             return False
 
@@ -214,7 +214,9 @@ class ValidDate(ValidValue):
 
 
 class ValidJson(ValidValue):
-    def __init__(self, schema: dict[str, ValidValue], is_optional = False, arbitrary = False):
+    def __init__(
+        self, schema: dict[str, ValidValue], is_optional=False, arbitrary=False
+    ):
         self.schema = schema
         self.keys = list(schema.keys())
         self.arbitrary = arbitrary
@@ -257,6 +259,7 @@ class ValidMealTime(ValidValue):
     def validate(self, value: str) -> bool:
         self.value = value or 0
         return self.value in [0, 1, 2, 3]
+
 
 class ValidList(ValidValue):
     def validate(self, value: str) -> bool:
