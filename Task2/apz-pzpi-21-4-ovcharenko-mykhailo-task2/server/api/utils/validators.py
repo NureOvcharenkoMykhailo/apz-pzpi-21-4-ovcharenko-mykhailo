@@ -256,7 +256,8 @@ class ValidBoolean(ValidValue):
 
 
 class ValidMealTime(ValidValue):
-    def validate(self, value: str) -> bool:
+    def validate(self, value: str | int) -> bool:
+        value = int(value)
         self.value = value or 0
         return self.value in [0, 1, 2, 3]
 

@@ -236,6 +236,8 @@ class FoodView(View):
         if post.amino_acids:
             food.fk_nutrition.amino_acids = json.dumps(post.amino_acids)  # type: ignore
 
+        food.save()
+
         return 200, FoodSerializer(self.lang, food).data
 
 
